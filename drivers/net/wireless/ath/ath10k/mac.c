@@ -3343,6 +3343,7 @@ void ath10k_mac_tx_lock(struct ath10k *ar, int reason)
 	ar->tx_paused |= BIT(reason);
 	ieee80211_stop_queues(ar->hw);
 }
+EXPORT_SYMBOL(ath10k_mac_tx_lock);
 
 static void ath10k_mac_tx_unlock_iter(void *data, u8 *mac,
 				      struct ieee80211_vif *vif)
@@ -3373,6 +3374,7 @@ void ath10k_mac_tx_unlock(struct ath10k *ar, int reason)
 
 	ieee80211_wake_queue(ar->hw, ar->hw->offchannel_tx_hw_queue);
 }
+EXPORT_SYMBOL(ath10k_mac_tx_unlock);
 
 void ath10k_mac_vif_tx_lock(struct ath10k_vif *arvif, int reason)
 {
@@ -3743,11 +3745,8 @@ static int ath10k_mac_tx_submit(struct ath10k *ar,
 		break;
 	}
 
-	if (ret) {
-		ath10k_warn(ar, "failed to transmit packet, dropping: %d\n",
-			    ret);
+	if (ret)
 		ieee80211_free_txskb(ar->hw, skb);
-	}
 
 	return ret;
 }
@@ -3801,10 +3800,8 @@ static int ath10k_mac_tx(struct ath10k *ar,
 	}
 
 	ret = ath10k_mac_tx_submit(ar, txmode, txpath, skb);
-	if (ret) {
-		ath10k_warn(ar, "failed to submit frame: %d\n", ret);
+	if (ret)
 		return ret;
-	}
 
 	return 0;
 }
@@ -4436,7 +4433,12 @@ static void ath10k_mac_op_tx(struct ieee80211_hw *hw,
 
 	ret = ath10k_mac_tx(ar, vif, txmode, txpath, skb, false);
 	if (ret) {
-		ath10k_warn(ar, "failed to transmit frame: %d\n", ret);
+		if (ret == -ESHUTDOWN)
+			ath10k_dbg(ar, ATH10K_DBG_MAC, "failed to transmit frame: %d\n",
+				   ret);
+		else
+			ath10k_warn(ar, "failed to transmit frame: %d\n", ret);
+
 		if (is_htt) {
 			spin_lock_bh(&ar->htt.tx_lock);
 			ath10k_htt_tx_dec_pending(htt);
