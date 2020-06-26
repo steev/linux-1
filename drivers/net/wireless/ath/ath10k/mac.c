@@ -696,7 +696,8 @@ static void ath10k_wait_for_peer_delete_done(struct ath10k *ar, u32 vdev_id,
 	unsigned long time_left;
 	int ret;
 
-	if (test_bit(WMI_SERVICE_SYNC_DELETE_CMDS, ar->wmi.svc_map)) {
+	if (test_bit(WMI_SERVICE_SYNC_DELETE_CMDS, ar->wmi.svc_map) &&
+	    !test_bit(ATH10K_FLAG_CRASH_FLUSH, &ar->dev_flags)) {
 		ret = ath10k_wait_for_peer_deleted(ar, vdev_id, addr);
 		if (ret) {
 			ath10k_warn(ar, "failed wait for peer deleted");
@@ -836,7 +837,8 @@ static int ath10k_peer_delete(struct ath10k *ar, u32 vdev_id, const u8 *addr)
 	if (ret)
 		return ret;
 
-	if (test_bit(WMI_SERVICE_SYNC_DELETE_CMDS, ar->wmi.svc_map)) {
+	if (test_bit(WMI_SERVICE_SYNC_DELETE_CMDS, ar->wmi.svc_map) &&
+	    !test_bit(ATH10K_FLAG_CRASH_FLUSH, &ar->dev_flags)) {
 		unsigned long time_left;
 
 		time_left = wait_for_completion_timeout
@@ -5668,7 +5670,8 @@ static void ath10k_remove_interface(struct ieee80211_hw *hw,
 		ath10k_warn(ar, "failed to delete WMI vdev %i: %d\n",
 			    arvif->vdev_id, ret);
 
-	if (test_bit(WMI_SERVICE_SYNC_DELETE_CMDS, ar->wmi.svc_map)) {
+	if (test_bit(WMI_SERVICE_SYNC_DELETE_CMDS, ar->wmi.svc_map) &&
+	    !test_bit(ATH10K_FLAG_CRASH_FLUSH, &ar->dev_flags)) {
 		time_left = wait_for_completion_timeout(&ar->vdev_delete_done,
 							ATH10K_VDEV_DELETE_TIMEOUT_HZ);
 		if (time_left == 0) {
@@ -6102,6 +6105,11 @@ static int ath10k_hw_scan(struct ieee80211_hw *hw,
 
 	if (ath10k_mac_tdls_vif_stations_count(hw, vif) > 0) {
 		ret = -EBUSY;
+		goto exit;
+	}
+
+	if (test_bit(ATH10K_FLAG_CRASH_FLUSH, &ar->dev_flags)) {
+		ret = -ESHUTDOWN;
 		goto exit;
 	}
 
@@ -6753,7 +6761,9 @@ static int ath10k_sta_state(struct ieee80211_hw *hw,
 		}
 
 		ret = ath10k_peer_delete(ar, arvif->vdev_id, sta->addr);
-		if (ret)
+		if (ret == -ESHUTDOWN)
+			ret = 0;
+		else if (ret)
 			ath10k_warn(ar, "failed to delete peer %pM for vdev %d: %i\n",
 				    sta->addr, arvif->vdev_id, ret);
 
