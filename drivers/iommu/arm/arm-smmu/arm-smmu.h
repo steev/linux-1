@@ -379,6 +379,11 @@ struct arm_smmu_domain {
 	struct iommu_domain		domain;
 };
 
+static inline struct arm_smmu_domain *to_smmu_domain(struct iommu_domain *dom)
+{
+	return container_of(dom, struct arm_smmu_domain, domain);
+}
+
 struct arm_smmu_master_cfg {
 	struct arm_smmu_device		*smmu;
 	s16				smendx[];
@@ -443,6 +448,7 @@ struct arm_smmu_impl {
 	int (*alloc_context_bank)(struct arm_smmu_domain *smmu_domain,
 				  struct arm_smmu_device *smmu,
 				  struct device *dev, int start);
+	int (*inherit_mappings)(struct arm_smmu_device *smmu);
 };
 
 #define INVALID_SMENDX			-1
