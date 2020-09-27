@@ -8,6 +8,9 @@
 #include <linux/module.h>
 #include <linux/firmware.h>
 #include <linux/of.h>
+#include <linux/of_net.h>
+#include <linux/of_platform.h>
+#include <linux/property.h>
 #include <linux/property.h>
 #include <linux/dmi.h>
 #include <linux/ctype.h>
@@ -2955,7 +2958,11 @@ EXPORT_SYMBOL(ath10k_core_stop);
 static int ath10k_core_probe_fw(struct ath10k *ar)
 {
 	struct bmi_target_info target_info;
+	const char *mac;
 	int ret = 0;
+
+	/* register the platform to be found by the of api */
+	of_platform_device_create(ar->dev->of_node, NULL, NULL);
 
 	ret = ath10k_hif_power_up(ar, ATH10K_FIRMWARE_MODE_NORMAL);
 	if (ret) {
@@ -3055,6 +3062,10 @@ static int ath10k_core_probe_fw(struct ath10k *ar)
 	}
 
 	device_get_mac_address(ar->dev, ar->mac_addr, sizeof(ar->mac_addr));
+
+	mac = of_get_mac_address(ar->dev->of_node);
+	if (!IS_ERR(mac))
+		ether_addr_copy(ar->mac_addr, mac);
 
 	ret = ath10k_core_init_firmware_features(ar);
 	if (ret) {
