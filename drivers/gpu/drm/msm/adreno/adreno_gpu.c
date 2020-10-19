@@ -991,35 +991,8 @@ int adreno_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 
 	ret = msm_gpu_init(drm, pdev, &adreno_gpu->base, &funcs->base,
 			adreno_gpu->info->name, &adreno_gpu_config);
-	if (ret)
-		return ret;
 
-	/*
-	 * The legacy case, before "interconnect-names", only has a
-	 * single interconnect path which is equivalent to "gfx-mem"
-	 */
-	if (!of_find_property(dev->of_node, "interconnect-names", NULL)) {
-		gpu->icc_path = of_icc_get(dev, NULL);
-	} else {
-		gpu->icc_path = of_icc_get(dev, "gfx-mem");
-		gpu->ocmem_icc_path = of_icc_get(dev, "ocmem");
-	}
-
-	if (IS_ERR(gpu->icc_path)) {
-		ret = PTR_ERR(gpu->icc_path);
-		gpu->icc_path = NULL;
-		return ret;
-	}
-
-	if (IS_ERR(gpu->ocmem_icc_path)) {
-		ret = PTR_ERR(gpu->ocmem_icc_path);
-		gpu->ocmem_icc_path = NULL;
-		/* allow -ENODATA, ocmem icc is optional */
-		if (ret != -ENODATA)
-			return ret;
-	}
-
-	return 0;
+	return ret;
 }
 
 void adreno_gpu_cleanup(struct adreno_gpu *adreno_gpu)
