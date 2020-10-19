@@ -449,6 +449,7 @@ struct arm_smmu_impl {
 				  struct arm_smmu_device *smmu,
 				  struct device *dev, int start);
 	int (*inherit_mappings)(struct arm_smmu_device *smmu);
+	void (*write_s2cr)(struct arm_smmu_device *smmu, int idx);
 };
 
 #define INVALID_SMENDX			-1
